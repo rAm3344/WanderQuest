@@ -41,6 +41,7 @@ const query = encodeURIComponent(address);
 
 // Make sure LOCATIONIQ_API_KEY is in your .env file and Render Environment Variables
 const apiKey = process.env.LOCATIONIQ_API_KEY;
+console.log("Is the API key loaded in Render?:", apiKey ? "YES, IT IS LOADED" : "NO, IT IS UNDEFINED");
 const geocodeUrl = `https://us1.locationiq.com/v1/search?key=${apiKey}&q=${query}&format=json`;
 
 try {
