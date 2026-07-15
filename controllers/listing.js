@@ -35,41 +35,41 @@ module.exports.createListing = async (req, res, next) => {
     newListing.owner = req.user._id; 
     newListing.image = { url, filename };
 
-    // --- START GEOCODING LOGIC ---
+   // --- START GEOCODING LOGIC ---
+const address = req.body.listing.location; 
+const query = encodeURIComponent(address);
+
+// Make sure LOCATIONIQ_API_KEY is in your .env file and Render Environment Variables
+const apiKey = process.env.LOCATIONIQ_API_KEY;
+const geocodeUrl = `https://us1.locationiq.com/v1/search?key=${apiKey}&q=${query}&format=json`;
+
+try {
+    // You no longer need the custom User-Agent header; the API key handles authorization
+    const response = await fetch(geocodeUrl);
+
+    if (!response.ok) {
+        req.flash("error", "Geocoding service is currently unavailable. Please try again later.");
+        return res.redirect("/listings/new"); 
+    }
+
+    const data = await response.json();
+
+    if (!data || data.length === 0) {
+        req.flash("error", "Location not found. Please enter a valid address.");
+        return res.redirect("/listings/new"); // Redirect back to the form
+    }
     
-    // 1. Get the location from the request body (adjust this if your input field has a different name)
-    const address = req.body.listing.location; 
-    const query = encodeURIComponent(address);
-    const geocodeUrl = `https://nominatim.openstreetmap.org/search?q=${query}&format=json`;
-
-    try {
-        const response = await fetch(geocodeUrl, {
-            headers: {
-                'User-Agent': 'WanderQuest (ram8899clg@gmail.com)' 
-            }
-        });
-
-        if (!response.ok) {
-            req.flash("error", "Geocoding service is currently unavailable. Please try again later.");
-            return res.redirect("/listings/new"); 
-        }
-
-        const data = await response.json();
-
-        if (!data || data.length === 0) {
-            req.flash("error", "Location not found. Please enter a valid address.");
-            return res.redirect("/listings/new"); // Redirect back to the form
-    }
     newListing.geometry = {
-            type: "Point",
-            coordinates: [parseFloat(data[0].lon), parseFloat(data[0].lat)] // Note: GeoJSON requires [longitude, latitude]
-        };
-         } catch (err) {
-        console.error("Geocoding Error:", err);
-        req.flash("error", "Something went wrong while finding the location.");
-        return res.redirect("/listings/new");
-    }
-    // --- END GEOCODING LOGIC ---
+        type: "Point",
+        coordinates: [parseFloat(data[0].lon), parseFloat(data[0].lat)] // GeoJSON requires [longitude, latitude]
+    };
+    
+} catch (err) {
+    console.error("Geocoding Error:", err);
+    req.flash("error", "Something went wrong while finding the location.");
+    return res.redirect("/listings/new");
+}
+// --- END GEOCODING LOGIC ---
     await newListing.save();
     req.flash("success", "New Listing Created!");
     res.redirect("/listings");
